@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHIZEL - Turning Screen Time into Skill Time</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@300;400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/ScrollTrigger.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/ScrollToPlugin.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        /* Base Styles */
+        :root {
+            --space-dark: #0A0E17;
+            --space-darker: #050811;
+            --space-purple: #6C63FF;
+            --space-pink: #FF6B9D;
+            --space-blue: #4DCCFF;
+            --space-accent: #A78BFA;
+            --space-text: #E2E8F0;
+            --space-text-dim: #94A3B8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            color: var(--space-text);
+            background-color: var(--space-dark);
+            overflow-x: hidden;
+            perspective: 1000px;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        /* Space Background Canvas */
+        #spaceCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Gradient Text */
+        .gradient-text {
+            background: linear-gradient(90deg, var(--space-purple), var(--space-blue));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            display: inline-block;
+        }
+
+        /* Rocket Cursor */
+        .rocket-cursor {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%) rotate(45deg);
+            transition: transform 0.1s ease-out;
+            filter: drop-shadow(0 0 10px rgba(108, 99, 255, 0.7));
+        }
+
+        .rocket-cursor::before {
+            content: '🚀';
+            font-size: 30px;
+            display: block;
+            transform: rotate(-45deg);
+        }
+
+        .rocket-cursor.active {
+            transform: translate(-50%, -50%) rotate(45deg) scale(1.5);
+            filter: drop-shadow(0 0 15px rgba(255, 107, 157, 0.8));
+        }
+
+        .rocket-trail {
+            position: fixed;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(77, 204, 255, 0.3) 0%, rgba(77, 204, 255, 0) 70%);
+            pointer-events: none;
+            z-index: 9998;
+            transform: translate(-50%, -50%) scale(0);
+            transition: transform 0.3s ease-out;
+        }
+
+        .rocket-trail.active {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* Logo Animation Container */
+        .logo-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            width: 300px;
+            height: 300px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .logo-door {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: var(--space-darker);
+            border: 5px solid var(--space-purple);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(108, 99, 255, 0.5),
+                        inset 0 0 20px rgba(108, 99, 255, 0.3);
+            transform-style: preserve-3d;
+        }
+
+        .logo-door::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, 
+                rgba(108, 99, 255, 0.1) 0%, 
+                rgba(108, 99, 255, 0) 50%,
+                rgba(108, 99, 255, 0.1) 100%);
+        }
+
+        .logo-img {
+            width: 80%;
+            height: auto;
+            transition: transform 0.5s ease;
+            transform-style: preserve-3d;
+        }
+
+        .tagline {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            opacity: 0;
+            transform: translateY(20px);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Navigation - Gooey Effect */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            background-color: rgba(10, 14, 23, 0.8);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .navbar.scrolled {
+            padding: 15px 5%;
+            background-color: rgba(5, 8, 17, 0.95);
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 30px;
+            position: relative;
+        }
+
+        .nav-links::before {
+            content: '';
+            position: absolute;
+            width: 150%;
+            height: 150%;
+            background: radial-gradient(circle, rgba(108, 99, 255, 0.2) 0%, rgba(108, 99, 255, 0) 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            filter: blur(20px);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            z-index: -1;
+        }
+
+        .nav-links:hover::before {
+            opacity: 1;
+        }
+
+        .nav-links a {
+            color: var(--space-text);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+            position: relative;
+            font-size: 1.1rem;
+            padding: 5px 10px;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .nav-links a::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--space-purple), var(--space-blue));
+            transform: scaleX(0);
+            transform-origin: right;
+            transition: transform 0.3s ease;
+        }
+
+        .nav-links a:hover::before {
+            transform: scaleX(1);
+            transform-origin: left;
+        }
+
+        .nav-links a:hover {
+            color: var(--space-blue);
+            text-shadow: 0 0 10px rgba(77, 204, 255, 0.5);
+        }
+
+        .cta-button {
+            background: linear-gradient(135deg, var(--space-purple), var(--space-pink));
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-weight: 600;
+            transition: all 0.3s;
+            color: white;
+            display: inline-block;
+            border: none;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(108, 99, 255, 0.4);
+        }
+
+        .cta-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: all 0.5s ease;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(108, 99, 255, 0.6);
+        }
+
+        .cta-button:hover::before {
+            left: 100%;
+        }
+
+        /* Sections */
+        section {
+            position: relative;
+            min-height: 100vh;
+            padding: 100px 5%;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .section-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            position: relative;
+            z-index: 2;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-header h2 {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .section-header p {
+            font-size: 1.3rem;
+            max-width: 700px;
+            margin: 0 auto;
+            color: var(--space-text-dim);
+            line-height: 1.6;
+        }
+
+        /* Hero Section */
+        .hero-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-content {
+            max-width: 900px;
+            margin: 0 auto;
+            opacity: 0;
+            transform: translateY(50px);
+        }
+
+        .hero-content h1 {
+            font-size: 5rem;
+            margin-bottom: 2rem;
+            line-height: 1.2;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px rgba(108, 99, 255, 0.5);
+        }
+
+        .hero-content p {
+            font-size: 1.5rem;
+            margin-bottom: 3rem;
+            line-height: 1.6;
+            color: var(--space-text-dim);
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 40px;
+        }
+
+        .secondary-button {
+            background-color: transparent;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-block;
+            border: 2px solid var(--space-purple);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .secondary-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(108, 99, 255, 0.2), rgba(167, 139, 250, 0.1));
+            z-index: -1;
+            transition: all 0.3s ease;
+            opacity: 0;
+        }
+
+        .secondary-button:hover {
+            background-color: var(--space-purple);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(108, 99, 255, 0.4);
+        }
+
+        .secondary-button:hover::before {
+            opacity: 1;
+        }
+
+        /* Magic Bento Grid */
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 20px;
+            perspective: 1000px;
+        }
+
+        .bento-item {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px 30px;
+            border: 1px solid rgba(108, 99, 255, 0.2);
+            transition: all 0.5s ease;
+            transform-style: preserve-3d;
+            position: relative;
+            overflow: hidden;
+            min-height: 250px;
+        }
+
+        .bento-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(108, 99, 255, 0.1), rgba(255, 107, 157, 0.05));
+            z-index: -1;
+        }
+
+        .bento-item:hover {
+            transform: translateY(-10px) rotateX(5deg) rotateY(5deg);
+            box-shadow: 0 20px 40px rgba(108, 99, 255, 0.3),
+                        inset 0 0 20px rgba(108, 99, 255, 0.1);
+            border-color: rgba(108, 99, 255, 0.4);
+        }
+
+        .bento-item:nth-child(1) {
+            grid-column: 1 / 2;
+            grid-row: 1 / 2;
+        }
+
+        .bento-item:nth-child(2) {
+            grid-column: 2 / 3;
+            grid-row: 1 / 2;
+        }
+
+        .bento-item:nth-child(3) {
+            grid-column: 3 / 4;
+            grid-row: 1 / 2;
+        }
+
+        .bento-item:nth-child(4) {
+            grid-column: 1 / 3;
+            grid-row: 2 / 3;
+        }
+
+        .bento-item:nth-child(5) {
+            grid-column: 3 / 4;
+            grid-row: 2 / 3;
+        }
+
+        .bento-icon {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: var(--space-blue);
+            display: inline-block;
+            transform: translateY(0);
+            transition: all 0.3s ease;
+        }
+
+        .bento-item:hover .bento-icon {
+            transform: translateY(-5px);
+            color: var(--space-pink);
+        }
+
+        .bento-item h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: var(--space-text);
+        }
+
+        .bento-item p {
+            color: var(--space-text-dim);
+            line-height: 1.6;
+        }
+
+        /* Space Particles */
+        .space-particle {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Testimonials */
+        .testimonials-section {
+            background: linear-gradient(135deg, var(--space-darker), var(--space-dark));
+            position: relative;
+            overflow: hidden;
+        }
+
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            perspective: 1000px;
+        }
+
+        .testimonial-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(108, 99, 255, 0.2);
+            transition: all 0.5s ease;
+            transform-style: preserve-3d;
+        }
+
+        .testimonial-card:hover {
+            transform: translateY(-10px) rotateX(5deg);
+            box-shadow: 0 15px 30px rgba(108, 99, 255, 0.2);
+            border-color: rgba(108, 99, 255, 0.4);
+        }
+
+        .testimonial-content {
+            font-style: italic;
+            margin-bottom: 20px;
+            line-height: 1.6;
+            color: var(--space-text-dim);
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .author-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--space-purple), var(--space-pink));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .author-info h4 {
+            margin-bottom: 5px;
+            color: var(--space-text);
+        }
+
+        .author-info p {
+            color: var(--space-text-dim);
+            font-size: 0.9rem;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            background: linear-gradient(135deg, var(--space-purple), var(--space-pink));
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-content {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .cta-content h2 {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .cta-content p {
+            font-size: 1.3rem;
+            margin-bottom: 2.5rem;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Floating Astronaut */
+        .floating-astronaut {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M12 2.5c-1.5 0-3 1-3 2.5v3h6V5c0-1.5-1.5-2.5-3-2.5zm0 1c1 0 2 .5 2 1.5v2h-4V5c0-1 1-1.5 2-1.5zm-7 3v12h14V6.5H5zm1 1h12v10H6V7.5zm3 1v8h6v-8H9zm1 1h4v6h-4v-6zm-4 1v1h1v-1H6zm11 0v1h1v-1h-1zm-11 3v1h1v-1H6zm11 0v1h1v-1h-1z"/></svg>');
+            background-size: contain;
+            background-repeat: no-repeat;
+            z-index: 1;
+            opacity: 0.8;
+        }
+
+        /* Footer */
+        footer {
+            background-color: var(--space-darker);
+            padding: 80px 5% 40px;
+            position: relative;
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+        }
+
+        .footer-brand {
+            margin-bottom: 30px;
+        }
+
+        .footer-logo {
+            height: 40px;
+            margin-bottom: 20px;
+        }
+
+        .footer-links h4 {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: var(--space-blue);
+        }
+
+        .footer-links ul {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 10px;
+        }
+
+        .footer-links a {
+            color: var(--space-text-dim);
+            text-decoration: none;
+            transition: color 0.3s;
+            position: relative;
+        }
+
+        .footer-links a::before {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 1px;
+            background: var(--space-purple);
+            transition: width 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--space-blue);
+        }
+
+        .footer-links a:hover::before {
+            width: 100%;
+        }
+
+        .footer-bottom {
+            margin-top: 60px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 20px;
+        }
+
+        .social-links a {
+            color: var(--space-text-dim);
+            font-size: 1.2rem;
+            transition: color 0.3s;
+        }
+
+        .social-links a:hover {
+            color: var(--space-blue);
+        }
+
+        /* Scroll Down Indicator */
+        .scroll-down {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--space-text-dim);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .scroll-down::after {
+            content: '';
+            display: block;
+            width: 1px;
+            height: 50px;
+            background: var(--space-text-dim);
+            margin-top: 10px;
+            animation: scrollPulse 2s infinite;
+        }
+
+        @keyframes scrollPulse {
+            0%, 100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            50% {
+                transform: translateY(10px);
+                opacity: 0.5;
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .hero-content h1 {
+                font-size: 4rem;
+            }
+            
+            .section-header h2 {
+                font-size: 3rem;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .bento-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .bento-item:nth-child(4) {
+                grid-column: 1 / 2;
+                grid-row: 3 / 4;
+            }
+            
+            .bento-item:nth-child(5) {
+                grid-column: 2 / 3;
+                grid-row: 3 / 4;
+            }
+            
+            .hero-content h1 {
+                font-size: 3.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                padding: 15px;
+            }
+            
+            .nav-links {
+                margin-top: 20px;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 15px;
+            }
+            
+            .hero-content h1 {
+                font-size: 2.8rem;
+            }
+            
+            .hero-content p {
+                font-size: 1.2rem;
+            }
+            
+            .hero-buttons {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .section-header h2 {
+                font-size: 2.5rem;
+            }
+            
+            .bento-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .bento-item:nth-child(4),
+            .bento-item:nth-child(5) {
+                grid-column: auto;
+                grid-row: auto;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .hero-content h1 {
+                font-size: 2.2rem;
+            }
+            
+            .cta-content h2 {
+                font-size: 2.5rem;
+            }
+            
+            .section-header h2 {
+                font-size: 2rem;
+            }
+            
+            .footer-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .footer-bottom {
+                flex-direction: column;
+                gap: 20px;
+            }
+        }
+
+        /* Animations */
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        .float-animation {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        /* Text Reveal Animation */
+        .text-reveal {
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .text-reveal span {
+            display: inline-block;
+            transform: translateY(100%);
+            opacity: 0;
+        }
+
+        /* Parallax Elements */
+        .parallax-element {
+            position: absolute;
+            will-change: transform;
+        }
+
+        /* Space Nebula */
+        .space-nebula {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: radial-gradient(circle at center, 
+                rgba(108, 99, 255, 0.1) 0%, 
+                rgba(10, 14, 23, 0) 70%);
+            z-index: -1;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <!-- Space Background Canvas -->
+    <canvas id="spaceCanvas"></canvas>
+    
+    <!-- Rocket Cursor -->
+    <div class="rocket-cursor"></div>
+    <div class="rocket-trail"></div>
+    
+    <!-- Logo Animation -->
+    <div class="logo-container">
+        <div class="logo-door">
+            <img src="assets/logo.png" alt="CHIZEL Logo" class="logo-img">
+            <div class="tagline">TURNING SCREEN TIME INTO SKILL TIME</div>
+        </div>
+    </div>
+    
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="logo-container">
+            <img src="assets/logo.png" alt="CHIZEL Logo" class="footer-logo">
+        </div>
+        <ul class="nav-links">
+            <li><a href="#home">Home</a></li>
+            <li><a href="#mission">Our Mission</a></li>
+            <li><a href="#games">Space Games</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#testimonials">Testimonials</a></li>
+            <li><a href="#cta" class="cta-button">Launch App</a></li>
+        </ul>
+    </nav>
+    
+    <!-- Hero Section -->
+    <section id="home" class="hero-section">
+        <div class="space-nebula"></div>
+        <div class="section-container">
+            <div class="hero-content">
+                <h1>Explore <span class="gradient-text">Learning</span> in a New <span class="gradient-text">Galaxy</span></h1>
+                <p>CHIZEL transforms screen time into skill-building adventures with our space-themed educational games designed for young explorers.</p>
+                <div class="hero-buttons">
+                    <a href="#cta" class="cta-button">Start Free Trial</a>
+                    <a href="#games" class="secondary-button">Explore Games</a>
+                </div>
+            </div>
+        </div>
+        <div class="scroll-down">Scroll to Explore</div>
+    </section>
+    
+    <!-- Mission Section -->
+    <section id="mission" class="mission-section">
+        <div class="space-nebula" style="background: radial-gradient(circle at center, rgba(255, 107, 157, 0.1) 0%, rgba(10, 14, 23, 0) 70%);"></div>
+        <div class="section-container">
+            <div class="section-header">
+                <h2>Our <span class="gradient-text">Mission</span></h2>
+                <p>We're on a journey to revolutionize how children learn through play in the digital age.</p>
+            </div>
+            
+            <div class="bento-grid">
+                <div class="bento-item">
+                    <div class="bento-icon">🚀</div>
+                    <h3>Engagement</h3>
+                    <p>Captivate young minds with immersive space adventures that make learning irresistible.</p>
+                </div>
+                <div class="bento-item">
+                    <div class="bento-icon">🧠</div>
+                    <h3>Development</h3>
+                    <p>Boost cognitive skills through carefully designed challenges that grow with your child.</p>
+                </div>
+                <div class="bento-item">
+                    <div class="bento-icon">🌌</div>
+                    <h3>Exploration</h3>
+                    <p>Encourage curiosity and discovery through our vast universe of educational content.</p>
+                </div>
+                <div class="bento-item">
+                    <div class="bento-icon">👨‍🚀</div>
+                    <h3>Confidence</h3>
+                    <p>Build self-assurance through progressive challenges and positive reinforcement.</p>
+                </div>
+                <div class="bento-item">
+                    <div class="bento-icon">👨‍👩‍👧‍👦</div>
+                    <h3>Connection</h3>
+                    <p>Create bonding opportunities through shared learning experiences for the whole family.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Games Section -->
+    <section id="games" class="games-section">
+        <div class="space-nebula" style="background: radial-gradient(circle at center, rgba(77, 204, 255, 0.1) 0%, rgba(10, 14, 23, 0) 70%);"></div>
+        <div class="floating-astronaut" style="top: 20%; right: 10%;"></div>
+        <div class="section-container">
+            <div class="section-header">
+                <h2>Space <span class="gradient-text">Games</span></h2>
+                <p>Embark on interstellar learning adventures with our engaging educational games.</p>
+            </div>
+            
+            <div class="bento-grid">
+                <div class="bento-item">
+                    <div class="bento-icon">🔢</div>
+                    <h3>Math Meteoroids</h3>
+                    <p>Navigate through asteroid fields by solving math problems to fuel your spaceship.</p>
+                    <button class="cta-button" style="margin-top: 20px; width: 100%;">Play Demo</button>
+                </div>
+                <div class="bento-item">
+                    <div class="bento-icon">🔠</div>
+                    <h3>Word Wormholes</h3>
+                    <p>Travel through wormholes by unscrambling words and building vocabulary.</p>
+                    <button class="cta-button" style="margin-top: 20px; width: 100%;">Play Demo</button>
+                </div>
+                <div class="bento-item">
+                    <div class="bento-icon">🧩</div>
+                    <h3>Memory Moons</h3>
+                    <p>Match alien creatures on different moons to improve memory and concentration.</p>
+                    <button class="cta-button" style="margin-top: 20px; width: 100%;">Play Demo</button>
+                </div>
+                <div class="bento-item">
+                    <div class="bento-icon">🎨</div>
+                    <h3>Color Cosmos</h3>
+                    <p>Mix stardust colors to create new planets and learn about color theory.</p>
+                    <button class="cta-button" style="margin-top: 20px; width: 100%;">Play Demo</button>
+                </div>
+                <div class="bento-item">
+                    <div class="bento-icon">❓</div>
+                    <h3>Quiz Quasars</h3>
+                    <p>Answer questions about space and science to power up your starship.</p>
+                    <button class="cta-button" style="margin-top: 20px; width: 100%;">Play Demo</button>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Features Section -->
+    <section id="features" class="features-section">
+        <div class="space-nebula" style="background: radial-gradient(circle at center, rgba(167, 139, 250, 0.1) 0%, rgba(10, 14, 23, 0) 70%);"></div>
+        <div class="floating-astronaut" style="top: 30%; left: 10%; transform: scaleX(-1);"></div>
+        <div class="section-container">
+            <div class="section-header">
+                <h2>Stellar <span class="gradient-text">Features</span></h2>
+                <p>CHIZEL offers a universe of features designed to make learning fun and effective.</p>
+            </div>
+            
+            <div class="testimonials-grid">
+                <div class="testimonial-card">
+                    <div class="bento-icon">📊</div>
+                    <h3>Progress Tracking</h3>
+                    <p class="testimonial-content">Monitor your child's development with detailed analytics and personalized reports.</p>
+                </div>
+                <div class="testimonial-card">
+                    <div class="bento-icon">🎚️</div>
+                    <h3>Adaptive Difficulty</h3>
+                    <p class="testimonial-content">Games automatically adjust to your child's skill level for optimal challenge.</p>
+                </div>
+                <div class="testimonial-card">
+                    <div class="bento-icon">👨‍👩‍👧‍👦</div>
+                    <h3>Family Mode</h3>
+                    <p class="testimonial-content">Play together with collaborative challenges designed for family bonding.</p>
+                </div>
+                <div class="testimonial-card">
+                    <div class="bento-icon">🔒</div>
+                    <h3>Safe Space</h3>
+                    <p class="testimonial-content">Ad-free, COPPA-compliant environment with no in-app purchases.</p>
+                </div>
+                <div class="testimonial-card">
+                    <div class="bento-icon">📱</div>
+                    <h3>Cross-Platform</h3>
+                    <p class="testimonial-content">Sync progress across all devices for seamless learning anywhere.</p>
+                </div>
+                <div class="testimonial-card">
+                    <div class="bento-icon">🧪</div>
+                    <h3>Science-Backed</h3>
+                    <p class="testimonial-content">Designed with neuroscientists and child development experts.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Testimonials Section -->
+    <section id="testimonials" class="testimonials-section">
+        <div class="space-nebula" style="background: radial-gradient(circle at center, rgba(255, 107, 157, 0.1) 0%, rgba(10, 14, 23, 0) 70%);"></div>
+        <div class="section-container">
+            <div class="section-header">
+                <h2>Parent <span class="gradient-text">Testimonials</span></h2>
+                <p>Hear from families who've embarked on the CHIZEL learning journey.</p>
+            </div>
+            
+            <div class="testimonials-grid">
+                <div class="testimonial-card">
+                    <div class="testimonial-content">
+                        "My 8-year-old went from avoiding math to begging to play 'just one more level.' His teacher says his problem-solving skills have improved dramatically in just 6 weeks!"
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">S</div>
+                        <div class="author-info">
+                            <h4>Sarah J.</h4>
+                            <p>Parent of 8-year-old</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="testimonial-card">
+                    <div class="testimonial-content">
+                        "The social scenarios helped my shy daughter practice conversations in a low-pressure way. She made her first friend at school last month - we're overjoyed!"
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">M</div>
+                        <div class="author-info">
+                            <h4>Michael T.</h4>
+                            <p>Parent of 10-year-old</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="testimonial-card">
+                    <div class="testimonial-content">
+                        "I love that CHIZEL makes learning fun. The memory games helped me remember my multiplication tables faster than flashcards ever did!"
+                    </div>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">E</div>
+                        <div class="author-info">
+                            <h4>Emma, 9</h4>
+                            <p>Student</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- CTA Section -->
+    <section id="cta" class="cta-section">
+        <div class="space-nebula" style="background: radial-gradient(circle at center, rgba(108, 99, 255, 0.2) 0%, rgba(108, 99, 255, 0) 70%);"></div>
+        <div class="floating-astronaut float-animation" style="bottom: 10%; right: 15%;"></div>
+        <div class="cta-content">
+            <h2>Ready for <span class="gradient-text">Liftoff?</span></h2>
+            <p>Join thousands of families using CHIZEL to build brighter futures. Start your 14-day free trial today!</p>
+            <div class="hero-buttons">
+                <a href="#signup" class="cta-button float-animation">Get Started</a>
+                <a href="#demo" class="secondary-button">See How It Works</a>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Footer -->
+    <footer>
+        <div class="section-container">
+            <div class="footer-container">
+                <div class="footer-brand">
+                    <img src="assets/logo.png" alt="CHIZEL Logo" class="footer-logo">
+                    <p>Making screen time meaningful through neuroscience-based games that children love and parents trust.</p>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="#games">Games</a></li>
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#pricing">Pricing</a></li>
+                        <li><a href="#download">Download</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="#about">About Us</a></li>
+                        <li><a href="#research">Our Research</a></li>
+                        <li><a href="#blog">Blog</a></li>
+                        <li><a href="#careers">Careers</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="#help">Help Center</a></li>
+                        <li><a href="#contact">Contact Us</a></li>
+                        <li><a href="#privacy">Privacy Policy</a></li>
+                        <li><a href="#terms">Terms of Service</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>© 2025 CHIZEL. All rights reserved.</p>
+                <div class="social-links">
+                    <a href="https://www.youtube.com/@chizelofficial" aria-label="YouTube" target="_blank" rel="noopener noreferrer">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+                        </svg>
+                    </a>
+                    <a href="https://www.instagram.com/chizel_ox" aria-label="Instagram" target="_blank" rel="noopener noreferrer">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                        </svg>
+                    </a>
+                    <a href="https://facebook.com/chizel" aria-label="Facebook" target="_blank" rel="noopener noreferrer">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M22.675 0h-21.35c-.732 0-1.325.593-1.325 1.325v21.351c0 .731.593 1.324 1.325 1.324h11.495v-9.294h-3.128v-3.622h3.128v-2.671c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.622h-3.12v9.293h6.116c.73 0 1.323-.593 1.323-1.325v-21.35c0-.732-.593-1.325-1.325-1.325z"/>
+                        </svg>
+                    </a>
+                    <a href="https://twitter.com" aria-label="Twitter" target="_blank" rel="noopener noreferrer">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize GSAP and ScrollTrigger
+        gsap.registerPlugin(ScrollTrigger);
+        
+        // Space Background with Three.js
+        const spaceCanvas = document.getElementById('spaceCanvas');
+        const renderer = new THREE.WebGLRenderer({
+            canvas: spaceCanvas,
+            antialias: true,
+            alpha: true
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+        
+        // Create stars
+        const starsGeometry = new THREE.BufferGeometry();
+        const starsMaterial = new THREE.PointsMaterial({
+            color: 0xFFFFFF,
+            size: 0.1,
+            transparent: true,
+            opacity: 0.8
+        });
+        
+        const starsVertices = [];
+        for (let i = 0; i < 10000; i++) {
+            const x = (Math.random() - 0.5) * 2000;
+            const y = (Math.random() - 0.5) * 2000;
+            const z = (Math.random() - 0.5) * 2000;
+            starsVertices.push(x, y, z);
+        }
+        
+        starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+        const stars = new THREE.Points(starsGeometry, starsMaterial);
+        scene.add(stars);
+        
+        // Create nebula
+        const nebulaGeometry = new THREE.SphereGeometry(5, 32, 32);
+        const nebulaMaterial = new THREE.MeshBasicMaterial({
+            color: 0x6C63FF,
+            transparent: true,
+            opacity: 0.05
+        });
+        const nebula = new THREE.Mesh(nebulaGeometry, nebulaMaterial);
+        scene.add(nebula);
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate stars slightly
+            stars.rotation.x += 0.0001;
+            stars.rotation.y += 0.0001;
+            
+            // Pulsing nebula
+            nebula.scale.x = 1 + Math.sin(Date.now() * 0.001) * 0.1;
+            nebula.scale.y = 1 + Math.cos(Date.now() * 0.001) * 0.1;
+            nebula.scale.z = 1 + Math.sin(Date.now() * 0.0012) * 0.1;
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Rocket Cursor
+        const rocketCursor = document.querySelector('.rocket-cursor');
+        const rocketTrail = document.querySelector('.rocket-trail');
+        
+        document.addEventListener('mousemove', (e) => {
+            rocketCursor.style.left = e.clientX + 'px';
+            rocketCursor.style.top = e.clientY + 'px';
+            
+            setTimeout(() => {
+                rocketTrail.style.left = e.clientX + 'px';
+                rocketTrail.style.top = e.clientY + 'px';
+            }, 100);
+        });
+        
+        document.addEventListener('mouseenter', () => {
+            rocketCursor.style.opacity = '1';
+            rocketTrail.style.opacity = '1';
+        });
+        
+        document.addEventListener('mouseleave', () => {
+            rocketCursor.style.opacity = '0';
+            rocketTrail.style.opacity = '0';
+        });
+        
+        document.querySelectorAll('a, button, .bento-item').forEach(element => {
+            element.addEventListener('mouseenter', () => {
+                rocketCursor.classList.add('active');
+                rocketTrail.classList.add('active');
+            });
+            
+            element.addEventListener('mouseleave', () => {
+                rocketCursor.classList.remove('active');
+                rocketTrail.classList.remove('active');
+            });
+        });
+        
+        // Logo Animation on Scroll
+        const logoContainer = document.querySelector('.logo-container');
+        const logoDoor = document.querySelector('.logo-door');
+        const logoImg = document.querySelector('.logo-img');
+        const tagline = document.querySelector('.tagline');
+        const navbar = document.querySelector('.navbar');
+        const heroContent = document.querySelector('.hero-content');
+        
+        // Initial state
+        gsap.set(navbar, { opacity: 0 });
+        gsap.set(heroContent, { opacity: 0, y: 50 });
+        
+        // Logo animation timeline
+        const logoTL = gsap.timeline({
+            scrollTrigger: {
+                trigger: "body",
+                start: "top top",
+                end: "+=500",
+                scrub: 1,
+                pin: true
+            }
+        });
+        
+        logoTL.to(logoDoor, {
+            rotationY: 90,
+            transformOrigin: "left center",
+            ease: "power2.inOut"
+        })
+        .to(logoImg, {
+            scale: 1.2,
+            rotation: 10,
+            ease: "power2.inOut"
+        }, 0)
+        .to(tagline, {
+            opacity: 1,
+            y: 0,
+            ease: "power2.out",
+            delay: 0.3
+        }, 0.5)
+        .to(logoContainer, {
+            opacity: 0,
+            y: -100,
+            ease: "power2.in",
+            delay: 0.5
+        }, 1)
+        .to(navbar, {
+            opacity: 1,
+            duration: 0.5
+        }, 1.2)
+        .to(heroContent, {
+            opacity: 1,
+            y: 0,
+            duration: 1,
+            ease: "power2.out"
+        }, 1.5);
+        
+        // Navbar scroll effect
+        window.addEventListener('scroll', function() {
+            if (window.scrollY > 50) {
+                document.querySelector('.navbar').classList.add('scrolled');
+            } else {
+                document.querySelector('.navbar').classList.remove('scrolled');
+            }
+        });
+        
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    gsap.to(window, {
+                        duration: 1,
+                        scrollTo: {
+                            y: targetElement,
+                            offsetY: 80
+                        },
+                        ease: "power2.inOut"
+                    });
+                }
+            });
+        });
+        
+        // Bento grid animations
+        gsap.utils.toArray('.bento-item').forEach((item, i) => {
+            gsap.from(item, {
+                scrollTrigger: {
+                    trigger: item,
+                    start: "top 80%",
+                    toggleActions: "play none none none"
+                },
+                opacity: 0,
+                y: 50,
+                rotationX: 10,
+                rotationY: 10,
+                duration: 0.8,
+                delay: i * 0.1,
+                ease: "back.out(1.7)"
+            });
+        });
+        
+        // Floating astronaut animation
+        const astronaut = document.querySelector('.floating-astronaut');
+        if (astronaut) {
+            gsap.to(astronaut, {
+                y: 20,
+                duration: 3,
+                repeat: -1,
+                yoyo: true,
+                ease: "sine.inOut"
+            });
+            
+            gsap.to(astronaut, {
+                rotation: 5,
+                duration: 5,
+                repeat: -1,
+                yoyo: true,
+                ease: "sine.inOut"
+            });
+        }
+        
+        // Text reveal animations
+        gsap.utils.toArray('h1, h2, h3, p').forEach(element => {
+            gsap.from(element, {
+                scrollTrigger: {
+                    trigger: element,
+                    start: "top 80%",
+                    toggleActions: "play none none none"
+                },
+                opacity: 0,
+                y: 30,
+                duration: 0.8,
+                ease: "power2.out"
+            });
+        });
+        
+        // Scroll down indicator animation
+        const scrollDown = document.querySelector('.scroll-down');
+        if (scrollDown) {
+            scrollDown.addEventListener('click', () => {
+                gsap.to(window, {
+                    duration: 1.5,
+                    scrollTo: {
+                        y: "#mission",
+                        offsetY: 80
+                    },
+                    ease: "power2.inOut"
+                });
+            });
+        }
+        
+        // Create space particles
+        function createParticles() {
+            const particles = [];
+            const particleCount = 50;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'space-particle';
+                particle.style.width = `${Math.random() * 3 + 1}px`;
+                particle.style.height = particle.style.width;
+                particle.style.left = `${Math.random() * 100}vw`;
+                particle.style.top = `${Math.random() * 100}vh`;
+                particle.style.opacity = Math.random() * 0.5 + 0.1;
+                document.body.appendChild(particle);
+                particles.push(particle);
+                
+                // Animate particles
+                gsap.to(particle, {
+                    x: `${(Math.random() - 0.5) * 100}px`,
+                    y: `${(Math.random() - 0.5) * 100}px`,
+                    duration: Math.random() * 10 + 10,
+                    repeat: -1,
+                    yoyo: true,
+                    ease: "sine.inOut"
+                });
+            }
+        }
+        
+        createParticles();
+        
+        // Parallax elements
+        gsap.utils.toArray('.parallax-element').forEach(element => {
+            const depth = element.dataset.depth || 0.5;
+            
+            gsap.to(element, {
+                y: 100 * depth,
+                scrollTrigger: {
+                    trigger: element,
+                    start: "top bottom",
+                    end: "bottom top",
+                    scrub: true
+                }
+            });
+        });
+        
+        // Magic bento hover effects
+        document.querySelectorAll('.bento-item').forEach(item => {
+            item.addEventListener('mousemove', (e) => {
+                const rect = item.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                
+                const angleX = (y - centerY) / 20;
+                const angleY = (centerX - x) / 20;
+                
+                gsap.to(item, {
+                    rotationX: angleX,
+                    rotationY: angleY,
+                    transformPerspective: 500,
+                    ease: "power2.out",
+                    duration: 0.5
+                });
+            });
+            
+            item.addEventListener('mouseleave', () => {
+                gsap.to(item, {
+                    rotationX: 0,
+                    rotationY: 0,
+                    ease: "elastic.out(1, 0.5)",
+                    duration: 1
+                });
+            });
+        });
+    </script>
+</body>
+</html>
